@@ -1,0 +1,4 @@
+room_id,ward_id,room_number,type,capacity,has_bathroom,is_isolation_room,status
+1,1,1,aakka,1,true,false,Available
+2,1,1,Ward,2,true,false,Available
+3,0,0,Ward,0,true,false,Available
