@@ -1,67 +1,48 @@
-import '../data/csv_database.dart';
+import 'bed.dart';
 
 class Patient {
-  static const headers = [
-    'patient_id',
-    'medical_record_number',
-    'full_name',
-    'dob',
-    'gender',
-    'blood_type',
-    'emergency_contact',
-    'emergency_phone',
-    'requires_isolation'
-  ];
-
-  static String filePath = 'hospital_data/patients.csv'; // <-- change here
-
-  int? patientId;
-  String medicalRecordNumber;
-  String fullName;
+  int id;
+  String name;
   String dob;
-  String gender;
-  String bloodType;
-  String emergencyContact;
-  String emergencyPhone;
-  bool requiresIsolation;
+  Bed? assignedBed;
 
-  Patient({
-    this.patientId,
-    required this.medicalRecordNumber,
-    required this.fullName,
-    required this.dob,
-    required this.gender,
-    this.bloodType = '',
-    this.emergencyContact = '',
-    this.emergencyPhone = '',
-    this.requiresIsolation = false,
-  });
+  Patient({required this.id, required this.name, required this.dob, this.assignedBed});
 
-  Future<int> save() async {
-    patientId ??= await CSVDatabase.getNextId(filePath, 'patient_id');
-    final data = {
-      'patient_id': patientId,
-      'medical_record_number': medicalRecordNumber,
-      'full_name': fullName,
-      'dob': dob,
-      'gender': gender,
-      'blood_type': bloodType,
-      'emergency_contact': emergencyContact,
-      'emergency_phone': emergencyPhone,
-      'requires_isolation': requiresIsolation,
-    };
-    await CSVDatabase.appendCsv(filePath, headers, data);
-    return patientId!;
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'dob': dob,
+        'assignedBedId': assignedBed?.id,
+      };
+
+  factory Patient.fromJson(Map<String, dynamic> json) => Patient(
+        id: json['id'],
+        name: json['name'],
+        dob: json['dob'],
+        assignedBed: null, // reset; link later in HospitalService
+      );
+
+  void assignBed(Bed bed) {
+    if (!bed.isAvailable()) {
+      throw Exception('Bed ${bed.bedNumber} is not available');
+    }
+
+    // Release current bed if exists
+    if (assignedBed != null) {
+      assignedBed!.release();
+    }
+
+    assignedBed = bed;
+    bed.assignedPatient = this;
+    bed.status = 'Occupied';
   }
 
-  static Future<List<Map<String, dynamic>>> getAll() => CSVDatabase.readCsv(filePath);
-
-  static Future<Map<String, dynamic>?> getById(int id) async {
-    final patients = await getAll();
-    try {
-      return patients.firstWhere((p) => int.parse(p['patient_id'].toString()) == id);
-    } catch (_) {
-      return null;
+  void releaseBed() {
+    if (assignedBed != null) {
+      assignedBed!.release();
+      assignedBed = null;
     }
   }
+
+  bool hasBed() => assignedBed != null;
 }

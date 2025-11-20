@@ -1,64 +1,43 @@
-import '../data/csv_database.dart';
+// lib/domain/room.dart
+import 'bed.dart';
 
 class Room {
-  static const headers = [
-    'room_id',
-    'ward_id',
-    'room_number',
-    'type',
-    'capacity',
-    'has_bathroom',
-    'is_isolation_room',
-    'status'
-  ];
-
-  // Changed from const to static so it can be overridden in tests
-  static String filePath = 'hospital_data/rooms.csv';
-
-  int? roomId;
+  int id;
   int wardId;
-  String roomNumber;
-  String type; // ICU, Private, Semi-Private, Ward, Emergency, Isolation
-  int capacity;
-  bool hasBathroom;
-  bool isIsolationRoom;
-  String status; // Available, Occupied, Maintenance, Cleaning, Out of Service
+  String type;
+  String status; // Available or Full
+  List<Bed> beds = [];
 
-  Room({
-    this.roomId,
-    required this.wardId,
-    required this.roomNumber,
-    required this.type,
-    required this.capacity,
-    this.hasBathroom = true,
-    this.isIsolationRoom = false,
-    this.status = 'Available',
-  });
-
-  Future<int> save() async {
-    roomId ??= await CSVDatabase.getNextId(filePath, 'room_id');
-    final data = {
-      'room_id': roomId,
-      'ward_id': wardId,
-      'room_number': roomNumber,
-      'type': type,
-      'capacity': capacity,
-      'has_bathroom': hasBathroom,
-      'is_isolation_room': isIsolationRoom,
-      'status': status,
-    };
-    await CSVDatabase.appendCsv(filePath, headers, data);
-    return roomId!;
+  Room({required this.id, required this.wardId, required this.type, this.status = 'Available', List<Bed>? beds}) {
+    if (beds != null) this.beds = beds;
   }
 
-  static Future<List<Map<String, dynamic>>> getAll() => CSVDatabase.readCsv(filePath);
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'wardId': wardId,
+        'type': type,
+        'status': status,
+      };
 
-  static Future<List<Map<String, dynamic>>> getAvailableRooms({String? roomType}) async {
-    final rooms = await getAll();
-    var available = rooms.where((r) => r['status'] == 'Available').toList();
-    if (roomType != null) {
-      available = available.where((r) => r['type'] == roomType).toList();
-    }
-    return available;
+  factory Room.fromJson(Map<String, dynamic> json) => Room(
+        id: json['id'],
+        wardId: json['wardId'],
+        type: json['type'],
+      );
+
+  void addBed(Bed bed) {
+    beds.add(bed);
+    updateStatus();
+  }
+
+  void removeBed(Bed bed) {
+    beds.removeWhere((b) => b.id == bed.id);
+    updateStatus();
+  }
+
+  List<Bed> availableBeds() => beds.where((b) => b.isAvailable()).toList();
+
+  void updateStatus() {
+    status = beds.any((b) => b.isAvailable()) ? 'Available' : 'Full';
   }
 }
